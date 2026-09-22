@@ -400,10 +400,10 @@
     </div>
 
     <div class="dropzone" id="dropzone">
-      <input type="file" id="fileInput" accept="image/*" aria-label="Upload CT image">
+      <input type="file" id="fileInput" accept=".png,.jpg,.jpeg,.webp,.bmp,.gif,.tif,.tiff,.heic,.heif,image/png,image/jpeg,image/webp,image/bmp,image/gif,image/tiff,image/heic,image/heif" aria-label="Upload CT image">
       <div class="hint" id="dropHint">
         <b>Drop a CT image here</b>
-        or click to choose a file &mdash; a single exported slice/photo, JPG or PNG.
+        or click to choose a file &mdash; common formats include PNG, JPG/JPEG, WEBP, BMP, GIF, TIFF, HEIC.
       </div>
       <img id="previewImg" hidden alt="Uploaded CT image preview">
     </div>
@@ -602,9 +602,30 @@
 
   // ---------- file intake ----------
   var dropzone = $('dropzone'), fileInput = $('fileInput'), previewImg = $('previewImg'), dropHint = $('dropHint');
+  var ACCEPTED_IMAGE_RE = /\.(png|jpe?g|webp|bmp|gif|tiff?|heic|heif)$/i;
+  var ACCEPTED_IMAGE_TYPES = {
+    'image/png': true,
+    'image/jpeg': true,
+    'image/webp': true,
+    'image/bmp': true,
+    'image/gif': true,
+    'image/tiff': true,
+    'image/heic': true,
+    'image/heif': true
+  };
+
+  function isSupportedImageFile(file){
+    if(!file) return false;
+    var type = (file.type || '').toLowerCase();
+    var name = (file.name || '').toLowerCase();
+    return !!(ACCEPTED_IMAGE_TYPES[type] || ACCEPTED_IMAGE_RE.test(name));
+  }
 
   function handleFile(file){
-    if(!file || file.type.indexOf('image/') !== 0) return;
+    if(!file || !isSupportedImageFile(file)){
+      setStatus('Unsupported file type. Please upload a common image format like PNG, JPG/JPEG, WEBP, BMP, GIF, TIFF, or HEIC.', 'err');
+      return;
+    }
     state.file = file;
     if(state.previewUrl) URL.revokeObjectURL(state.previewUrl);
     state.previewUrl = URL.createObjectURL(file);
