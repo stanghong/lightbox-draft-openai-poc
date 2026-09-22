@@ -1,0 +1,10 @@
+{
+  "name": "lightbox-draft-openai-poc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-assisted radiology drafting proof of concept for CT image review and PDF export.",
+  "scripts": {
+    "dev": "python3 -m http.server 3000",
+    "start": "python3 -m http.server 3000"
+  }
+}

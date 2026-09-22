@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lightbox Draft (OpenAI edition)</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --bg:#F5F3EE;
+    --surface:#FFFFFF;
+    --ink:#1C2024;
+    --ink-soft:#5B6470;
+    --ink-faint:#8A8F93;
+    --line:#DDD8CF;
+    --accent:#0E7C86;
+    --accent-strong:#0B646C;
+    --accent-ink:#FFFFFF;
+    --warn-bg:#FBF0DD;
+    --warn-ink:#7A5300;
+    --warn-line:#E7CE96;
+    --critical:#B23B3B;
+    --critical-bg:#F8E7E5;
+    --viewer-bg:#05070A;
+    --viewer-panel:#0C1015;
+    --viewer-ink:#E8ECEF;
+    --viewer-soft:#8C97A0;
+    --viewer-line:#232A31;
+    --focus:#0E7C86;
+    --shadow: 0 1px 2px rgba(28,32,36,.06), 0 8px 24px -12px rgba(28,32,36,.18);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171A;
+      --surface:#1B1F23;
+      --ink:#ECEEEF;
+      --ink-soft:#A0A7AD;
+      --ink-faint:#767D82;
+      --line:#2B3136;
+      --accent:#3FC4CE;
+      --accent-strong:#57D3DC;
+      --accent-ink:#06282B;
+      --warn-bg:#3A2E12;
+      --warn-ink:#E8C468;
+      --warn-line:#5A4A1E;
+      --critical:#E5726B;
+      --critical-bg:#3A1E1C;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171A;
+    --surface:#1B1F23;
+    --ink:#ECEEEF;
+    --ink-soft:#A0A7AD;
+    --ink-faint:#767D82;
+    --line:#2B3136;
+    --accent:#3FC4CE;
+    --accent-strong:#57D3DC;
+    --accent-ink:#06282B;
+    --warn-bg:#3A2E12;
+    --warn-ink:#E8C468;
+    --warn-line:#5A4A1E;
+    --critical:#E5726B;
+    --critical-bg:#3A1E1C;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    padding-left:16px;padding-right:16px;
+    padding-bottom:48px;
+    margin:0;
+  }
+  h1,h2,h3{font-family:'Source Serif 4', Georgia, serif; text-wrap:balance; margin:0;}
+  ::selection{background:var(--accent); color:var(--accent-ink);}
+  button{font-family:inherit;}
+  textarea,input,select{font-family:inherit; color:inherit;}
+
+  a{color:var(--accent-strong);}
+
+  /* ---------- Disclaimer bar ---------- */
+  .disclaimer-bar{
+    position:sticky; top:env(safe-area-inset-top, 0px);
+    z-index:40;
+    margin:0 -16px 24px;
+    padding:10px 16px;
+    background:var(--warn-bg);
+    color:var(--warn-ink);
+    border-bottom:1px solid var(--warn-line);
+    font-size:.82rem;
+    line-height:1.35;
+    display:flex; gap:8px; align-items:flex-start;
+  }
+  .disclaimer-bar strong{font-weight:600;}
+  .disclaimer-dot{
+    flex:none; width:8px;height:8px;border-radius:50%;
+    background:var(--critical); margin-top:.35em;
+  }
+
+  /* ---------- Header ---------- */
+  .page-head{
+    max-width:1180px; margin:0 auto 28px;
+    display:flex; flex-wrap:wrap; gap:16px 32px; justify-content:space-between; align-items:flex-end;
+  }
+  .page-head h1{font-size:clamp(1.6rem,3vw,2.1rem); font-weight:700; letter-spacing:-.01em;}
+  .page-head .tagline{color:var(--ink-soft); font-size:.95rem; max-width:52ch; margin-top:6px;}
+  .head-meta{font-family:'IBM Plex Mono', monospace; font-size:.72rem; color:var(--ink-faint); text-align:right; line-height:1.6;}
+
+  /* ---------- Layout ---------- */
+  .stage{
+    max-width:1180px; margin:0 auto;
+    display:grid; grid-template-columns:minmax(280px,380px) 1fr; gap:24px; align-items:start;
+  }
+  @media (max-width:860px){ .stage{grid-template-columns:1fr;} }
+
+  /* ---------- Lightbox panel ---------- */
+  .lightbox{
+    background:var(--viewer-bg);
+    border-radius:6px;
+    border:1px solid var(--viewer-line);
+    color:var(--viewer-ink);
+    padding:18px;
+    position:sticky; top:calc(56px + env(safe-area-inset-top, 0px));
+    display:flex; flex-direction:column; gap:14px;
+    box-shadow:var(--shadow);
+  }
+  @media (max-width:860px){ .lightbox{position:static;} }
+  .lightbox h2{color:var(--viewer-ink); font-size:1.02rem; font-weight:600; font-family:'IBM Plex Sans',sans-serif; letter-spacing:.02em; text-transform:uppercase; display:flex; align-items:center; gap:8px; justify-content:space-between;}
+  .lightbox h2 .title-left{display:flex; align-items:center; gap:8px;}
+  .lightbox h2 .lamp{width:8px;height:8px;border-radius:50%;background:var(--accent); box-shadow:0 0 8px var(--accent);}
+
+  .sys-badge{
+    font-family:'IBM Plex Mono', monospace; font-size:.66rem; letter-spacing:.03em; text-transform:none;
+    display:inline-flex; align-items:center; gap:6px;
+    padding:3px 8px; border-radius:20px; border:1px solid var(--viewer-line);
+    color:var(--viewer-soft); background:var(--viewer-panel); white-space:nowrap;
+  }
+  .sys-badge .dot{width:6px;height:6px;border-radius:50%; background:var(--ink-faint); flex:none;}
+  .sys-badge[data-state="checking"] .dot{background:#B0A050; animation:pulse 1.1s ease-in-out infinite;}
+  .sys-badge[data-state="ready"]{color:#8FE3C7; border-color:#1F5A46;}
+  .sys-badge[data-state="ready"] .dot{background:#3FE0A8; box-shadow:0 0 6px #3FE0A8;}
+  .sys-badge[data-state="busy"]{color:var(--accent);}
+  .sys-badge[data-state="busy"] .dot{background:var(--accent); animation:pulse 1s ease-in-out infinite;}
+  .sys-badge[data-state="off"]{color:#F0A39B; border-color:#5A2B27;}
+  .sys-badge[data-state="off"] .dot{background:#F0A39B;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+  @media (prefers-reduced-motion: reduce){ .sys-badge .dot{animation:none !important;} }
+
+  .step-hint{
+    font-size:.72rem; color:var(--viewer-soft); display:flex; gap:14px; flex-wrap:wrap;
+  }
+  .step-hint span{display:flex; align-items:center; gap:5px;}
+  .step-hint .num{
+    width:15px;height:15px;border-radius:50%;background:var(--viewer-line);color:var(--viewer-ink);
+    font-size:.62rem; display:inline-flex; align-items:center; justify-content:center; flex:none; font-family:'IBM Plex Mono',monospace;
+  }
+  .step-hint span.done .num{background:var(--accent); color:var(--accent-ink);}
+  .step-hint span.active .num{background:var(--viewer-ink); color:var(--viewer-bg);}
+
+  /* ---------- API key panel ---------- */
+  .key-panel{
+    background:var(--viewer-panel); border:1px solid var(--viewer-line); border-radius:5px;
+    padding:12px; display:flex; flex-direction:column; gap:8px;
+  }
+  .key-row{display:flex; gap:8px;}
+  .key-row input[type=password], .key-row input[type=text]{
+    flex:1; min-width:0; background:var(--viewer-bg); color:var(--viewer-ink); border:1px solid var(--viewer-line);
+    border-radius:4px; padding:8px 10px; font-family:'IBM Plex Mono',monospace; font-size:.8rem;
+  }
+  .key-row input:focus{outline:2px solid var(--focus); outline-offset:1px;}
+  .key-controls{display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; font-size:.74rem; color:var(--viewer-soft);}
+  .key-controls label{display:flex; align-items:center; gap:6px; white-space:nowrap;}
+  .key-controls input[list], .key-controls input#modelInput{
+    background:var(--viewer-bg); color:var(--viewer-ink); border:1px solid var(--viewer-line);
+    border-radius:4px; padding:5px 8px; font-size:.78rem; font-family:'IBM Plex Mono',monospace; width:150px;
+  }
+  .key-link-btn{
+    background:none; border:none; color:var(--accent); font-size:.74rem; cursor:pointer; padding:0; text-decoration:underline;
+  }
+
+  .dropzone{
+    border:1.5px dashed var(--viewer-line);
+    border-radius:5px;
+    background:var(--viewer-panel);
+    min-height:200px;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    padding:18px; cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+    position:relative; overflow:hidden;
+  }
+  .dropzone.drag{border-color:var(--accent); background:#0F1720;}
+  .dropzone .hint{color:var(--viewer-soft); font-size:.85rem; max-width:26ch;}
+  .dropzone .hint b{color:var(--viewer-ink); display:block; font-size:.95rem; margin-bottom:4px; font-weight:600;}
+  .dropzone img{max-width:100%; max-height:340px; object-fit:contain; border-radius:3px;}
+  .dropzone input[type=file]{position:absolute; inset:0; opacity:0; cursor:pointer;}
+
+  .field-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--viewer-soft); margin-bottom:4px; display:block;}
+  .viewer-textarea{
+    width:100%; resize:vertical; min-height:52px;
+    background:var(--viewer-panel); color:var(--viewer-ink);
+    border:1px solid var(--viewer-line); border-radius:4px; padding:8px 10px; font-size:.86rem; line-height:1.4;
+  }
+  .viewer-textarea::placeholder{color:var(--viewer-soft);}
+  .viewer-textarea:focus{outline:2px solid var(--focus); outline-offset:1px;}
+
+  .phi-note{font-size:.74rem; color:var(--viewer-soft); line-height:1.45; border-left:2px solid var(--warn-ink); padding-left:8px;}
+
+  .btn{
+    appearance:none; border:none; border-radius:5px; cursor:pointer;
+    padding:10px 16px; font-size:.88rem; font-weight:600; letter-spacing:.01em;
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    transition:opacity .15s ease, transform .05s ease;
+  }
+  .btn:disabled{opacity:.7; cursor:not-allowed; filter:saturate(.6);}
+  .btn-primary:disabled{background:var(--viewer-line); color:var(--viewer-soft); border:1px solid var(--viewer-line);}
+  .btn-caption{font-size:.76rem; color:var(--viewer-soft); text-align:center; margin-top:-6px; min-height:1.1em;}
+  .btn-caption.ready{color:var(--accent);}
+  .btn:active:not(:disabled){transform:scale(.98);}
+  .btn-primary{background:var(--accent); color:var(--accent-ink);}
+  .btn-primary:hover:not(:disabled){background:var(--accent-strong);}
+  .btn-ghost{background:transparent; color:var(--viewer-ink); border:1px solid var(--viewer-line);}
+  .btn-ghost:hover:not(:disabled){border-color:var(--accent);}
+  .btn-block{width:100%;}
+  .btn:focus-visible{outline:2px solid var(--focus); outline-offset:2px;}
+
+  .status-line{font-size:.8rem; color:var(--viewer-soft); min-height:1.2em; display:flex; align-items:center; gap:8px;}
+  .status-line.err{color:#F0A39B;}
+  .spinner{width:12px;height:12px;border-radius:50%;border:2px solid var(--viewer-line); border-top-color:var(--accent); animation:spin .8s linear infinite; flex:none;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .caps-warn{font-size:.78rem; color:var(--viewer-soft); background:var(--viewer-panel); border:1px solid var(--viewer-line); border-radius:4px; padding:8px 10px; line-height:1.45;}
+
+  .ai-transcript{
+    background:var(--viewer-panel); border:1px solid var(--viewer-line); border-radius:4px;
+    padding:10px 12px; font-family:'IBM Plex Mono', monospace; font-size:.72rem; line-height:1.5;
+    color:var(--viewer-soft); max-height:170px; overflow-y:auto; white-space:pre-wrap; word-break:break-word;
+    transition:border-color .15s ease;
+  }
+  .ai-transcript.live{border-color:var(--accent);}
+  .ai-transcript.has-content{color:var(--viewer-ink);}
+
+  /* ---------- Report paper ---------- */
+  .report{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:6px;
+    box-shadow:var(--shadow);
+    padding:clamp(20px,3vw,40px);
+  }
+  .report-head{
+    display:flex; flex-wrap:wrap; justify-content:space-between; gap:16px 24px;
+    border-bottom:2px solid var(--ink); padding-bottom:16px; margin-bottom:20px;
+  }
+  .report-head h2{font-size:1.3rem; font-weight:700;}
+  .report-head .sub{font-size:.82rem; color:var(--ink-soft); margin-top:4px;}
+  .meta-grid{
+    display:grid; grid-template-columns:repeat(2,minmax(150px,1fr)); gap:10px 20px;
+    font-size:.84rem;
+  }
+  @media (max-width:520px){ .meta-grid{grid-template-columns:1fr;} }
+  .meta-field label{display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); margin-bottom:3px;}
+  .meta-field input{
+    width:100%; border:1px solid var(--line); border-radius:4px; padding:6px 8px;
+    background:var(--surface); color:var(--ink); font-size:.86rem;
+  }
+  .meta-field input:focus, textarea:focus{outline:2px solid var(--focus); outline-offset:1px;}
+
+  .section{margin-bottom:24px;}
+  .section > h3{
+    font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; font-weight:600;
+    color:var(--accent-strong); font-family:'IBM Plex Sans',sans-serif;
+    border-bottom:1px solid var(--line); padding-bottom:6px; margin-bottom:10px;
+  }
+  .section textarea{
+    width:100%; resize:vertical; border:1px solid var(--line); border-radius:4px;
+    padding:10px 12px; font-size:.92rem; line-height:1.55; background:var(--surface); color:var(--ink);
+  }
+  #technique{min-height:60px;}
+  #clinicalInfo{min-height:52px;}
+  #limitations{min-height:64px;}
+  #impression{min-height:110px;}
+
+  .finding-row{
+    display:grid; grid-template-columns:180px 1fr auto; gap:10px; align-items:start; margin-bottom:10px;
+  }
+  @media (max-width:640px){ .finding-row{grid-template-columns:1fr; } .finding-row .row-remove{justify-self:flex-end;} }
+  .finding-row input{
+    border:1px solid var(--line); border-radius:4px; padding:8px 10px; font-size:.86rem;
+    font-family:'IBM Plex Mono', monospace; background:var(--surface); color:var(--ink);
+  }
+  .finding-row textarea{min-height:44px; font-size:.9rem;}
+  .row-remove{
+    background:none; border:1px solid var(--line); color:var(--ink-faint); border-radius:4px;
+    width:32px; height:32px; cursor:pointer; font-size:.95rem; line-height:1;
+  }
+  .row-remove:hover{border-color:var(--critical); color:var(--critical);}
+  .add-row{
+    background:none; border:1px dashed var(--line); color:var(--ink-soft); border-radius:4px;
+    padding:8px 14px; font-size:.84rem; cursor:pointer; width:100%; text-align:left;
+  }
+  .add-row:hover{border-color:var(--accent); color:var(--accent-strong);}
+
+  .fixed-disclosure{
+    font-size:.8rem; color:var(--ink-soft); line-height:1.55;
+    background:var(--warn-bg); border:1px solid var(--warn-line); color:var(--warn-ink);
+    border-radius:5px; padding:12px 14px; margin-bottom:24px;
+  }
+  .fixed-disclosure b{display:block; margin-bottom:3px;}
+
+  .qa-note{font-size:.75rem; color:var(--ink-faint); margin-top:6px; line-height:1.4;}
+
+  .sign-block{
+    display:flex; flex-wrap:wrap; gap:16px 32px; align-items:flex-end;
+    border-top:1px solid var(--line); padding-top:18px; margin-top:6px; margin-bottom:24px;
+  }
+  .sign-line{flex:1; min-width:220px;}
+  .sign-line label{display:block; font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-faint); margin-bottom:3px;}
+  .sign-line input{width:100%; border:none; border-bottom:1px solid var(--ink); padding:6px 2px; font-size:.92rem; background:transparent; color:var(--ink);}
+  .sign-note{font-size:.76rem; color:var(--ink-faint); flex:none; max-width:32ch;}
+
+  .actions{display:flex; flex-wrap:wrap; gap:10px;}
+  .actions .btn{flex:1; min-width:160px;}
+  .actions .btn-secondary{background:transparent; border:1px solid var(--line); color:var(--ink-soft);}
+  .actions .btn-secondary:hover:not(:disabled){border-color:var(--ink-soft); color:var(--ink);}
+
+  .report-status{font-size:.8rem; color:var(--ink-soft); margin-top:10px; min-height:1.2em;}
+  .report-status.err{color:var(--critical);}
+  .report-status.ok{color:var(--accent-strong);}
+
+  footer.credit{max-width:1180px; margin:28px auto 0; font-size:.75rem; color:var(--ink-faint); text-align:center;}
+
+  .feedback-btn{
+    background:transparent; border:1px solid var(--line); color:var(--ink-soft);
+    border-radius:5px; padding:8px 14px; font-size:.82rem; font-weight:600; cursor:pointer;
+    display:inline-flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .feedback-btn:hover{border-color:var(--accent); color:var(--accent-strong);}
+  .feedback-btn .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="disclaimer-bar">
+  <span class="disclaimer-dot"></span>
+  <span><strong>Proof of concept.</strong> AI-assisted drafting only &mdash; not a medical device, not validated for diagnosis, not for clinical use. Every field must be reviewed, corrected and signed by a licensed radiologist before it means anything.</span>
+</div>
+
+<header class="page-head">
+  <div>
+    <h1>Lightbox Draft</h1>
+    <div class="tagline">Upload a CT image, get an AI-drafted structured report you can correct line by line, then export a PDF for review &mdash; a workflow test, not a diagnosis. This build calls OpenAI directly with your own API key.</div>
+  </div>
+  <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+    <a class="feedback-btn" id="feedbackBtn" href="mailto:fengswpi@gmail.com?subject=Lightbox%20Draft%20feedback" style="text-decoration:none;"><span class="dot"></span> Email feedback</a>
+    <div class="head-meta" id="headMeta">v0.2 &middot; OpenAI build</div>
+  </div>
+</header>
+
+<main class="stage">
+  <!-- LIGHTBOX -->
+  <section class="lightbox" aria-label="Image intake">
+    <h2>
+      <span class="title-left"><span class="lamp"></span> Lightbox</span>
+      <span class="sys-badge" id="sysBadge" data-state="checking"><span class="dot"></span><span id="sysBadgeText">Loading&hellip;</span></span>
+    </h2>
+
+    <div class="step-hint">
+      <span id="step1" class="active"><span class="num">1</span> Upload image</span>
+      <span id="step2"><span class="num">2</span> Analyze</span>
+      <span id="step3"><span class="num">3</span> Review &amp; edit</span>
+      <span id="step4"><span class="num">4</span> Export PDF</span>
+    </div>
+
+    <div class="key-panel">
+      <span class="field-label">OpenAI API key</span>
+      <div class="key-row">
+        <input type="password" id="apiKeyInput" placeholder="sk-...">
+        <button type="button" class="btn btn-ghost" id="toggleKeyBtn" style="flex:none; padding:8px 10px;">Show</button>
+      </div>
+      <div class="key-controls">
+        <label><input type="checkbox" id="rememberKey" checked> Remember on this device</label>
+        <label>Model
+          <input type="text" id="modelInput" list="modelList" value="gpt-4o">
+          <datalist id="modelList">
+            <option value="gpt-4o">
+            <option value="gpt-4o-mini">
+            <option value="gpt-4.1">
+            <option value="gpt-4.1-mini">
+            <option value="o4-mini">
+          </datalist>
+        </label>
+        <button type="button" class="key-link-btn" id="clearKeyBtn">Clear saved key</button>
+      </div>
+      <div class="phi-note">Your key is used only in this browser to call OpenAI's API directly &mdash; it is never sent anywhere else, including to Anthropic. &ldquo;Remember on this device&rdquo; stores it in this browser's local storage; uncheck it to keep the key in memory for this tab only. Get a key at <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com/api-keys</a>. If you change the model, use one your OpenAI account has vision access to.</div>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" accept="image/*" aria-label="Upload CT image">
+      <div class="hint" id="dropHint">
+        <b>Drop a CT image here</b>
+        or click to choose a file &mdash; a single exported slice/photo, JPG or PNG.
+      </div>
+      <img id="previewImg" hidden alt="Uploaded CT image preview">
+    </div>
+
+    <div class="phi-note">Don&rsquo;t upload images with a visible patient name, MRN, accession number or date of birth. Crop first, or use a de-identified / sample image &mdash; this page is shared for workflow testing.</div>
+
+    <div>
+      <span class="field-label">Clinical indication (optional)</span>
+      <textarea class="viewer-textarea" id="indication" placeholder="e.g. right upper quadrant pain, fever &mdash; no patient identifiers"></textarea>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="analyzeBtn" disabled>&#9889; Analyze with AI</button>
+    <div class="btn-caption" id="analyzeCaption">Enter your OpenAI API key above to enable AI drafting.</div>
+    <button class="btn btn-ghost btn-block" id="regenBtn" hidden>Regenerate AI draft</button>
+
+    <div class="status-line" id="statusLine"></div>
+
+    <div>
+      <span class="field-label">AI output (live)</span>
+      <div class="ai-transcript" id="aiTranscript">No AI output yet &mdash; upload an image above and click Analyze. You'll see the AI's answer appear here as it's written, before it gets split into the fields on the right.</div>
+    </div>
+
+    <div class="caps-warn" id="capsWarn" hidden></div>
+  </section>
+
+  <!-- REPORT -->
+  <section class="report" aria-label="Structured report draft">
+    <div class="report-head">
+      <div>
+        <h2 id="studyTitle">CT &mdash; study pending</h2>
+        <div class="sub">Draft structured report &middot; AI-assisted, unsigned</div>
+      </div>
+      <div class="meta-grid" style="min-width:280px;">
+        <div class="meta-field"><label for="facility">Facility</label><input id="facility" value="POC Test Site &mdash; not a real facility"></div>
+        <div class="meta-field"><label for="studyDate">Date</label><input id="studyDate" type="date"></div>
+        <div class="meta-field"><label for="patientRef">Study / test reference</label><input id="patientRef" placeholder="e.g. TEST-001 &mdash; no real identifiers"></div>
+        <div class="meta-field"><label for="radiologist">Radiologist</label><input id="radiologist" placeholder="Dr. ______"></div>
+      </div>
+    </div>
+
+    <div class="fixed-disclosure">
+      <b>AI-assisted proof of concept.</b>
+      Findings below were drafted by a general-purpose AI vision model (OpenAI) reading one flattened image &mdash; not a regulatory-cleared radiology algorithm, not a full DICOM series, and with no prior comparison. It will miss things and can describe things that aren't there. Nothing here is a diagnosis until a licensed radiologist reviews, corrects and signs it.
+    </div>
+
+    <div class="section">
+      <h3>Clinical Information</h3>
+      <textarea id="clinicalInfo" placeholder="Reason for exam / clinical question&hellip;"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Technique</h3>
+      <textarea id="technique" placeholder="Technique will be filled in from the AI read, or describe manually&hellip;"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Comparison</h3>
+      <textarea id="comparison" style="min-height:44px;" placeholder="None available, or prior study date&hellip;"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Findings</h3>
+      <div id="findingsList"></div>
+      <button class="add-row" id="addFinding" type="button">+ Add finding</button>
+    </div>
+
+    <div class="section">
+      <h3>Impression</h3>
+      <textarea id="impression" placeholder="1. &hellip;&#10;2. &hellip;&#10;One numbered point per line."></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Limitations</h3>
+      <textarea id="limitations" placeholder="What this single-image AI draft cannot assess&hellip;"></textarea>
+    </div>
+
+    <div class="section">
+      <h3>Internal QA / ICD reference <span style="font-weight:400; text-transform:none; letter-spacing:0; color:var(--ink-faint);">(optional)</span></h3>
+      <input id="icdRef" style="width:100%; border:1px solid var(--line); border-radius:4px; padding:8px 10px; font-size:.86rem; font-family:'IBM Plex Mono',monospace; background:var(--surface); color:var(--ink);" placeholder="e.g. K57.32 &mdash; for internal QA/testing only">
+      <div class="qa-note">Not a billing code and not an automated diagnosis. A suspected finding is not the same as a confirmed diagnosis &mdash; don't assign a definitive code from imaging appearance alone.</div>
+    </div>
+
+    <div class="sign-block">
+      <div class="sign-line">
+        <label for="radiologist2">Electronically drafted with AI assistance. Pending review and sign-off by</label>
+        <input id="radiologist2" placeholder="Dr. ______">
+      </div>
+      <div class="sign-note">Signature line is illustrative only &mdash; this page has no e-signature or audit trail.</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-primary" id="downloadBtn">Download PDF</button>
+      <button class="btn btn-secondary" id="clearBtn" type="button">Start over</button>
+    </div>
+    <div class="report-status" id="reportStatus"></div>
+  </section>
+</main>
+
+<footer class="credit">Lightbox Draft &middot; proof-of-concept workflow tool &middot; not for clinical, diagnostic or billing use</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = 'lightboxDraft.openaiKey';
+  var STORAGE_MODEL = 'lightboxDraft.openaiModel';
+
+  // ---------- state ----------
+  var state = {
+    file: null,
+    previewUrl: null,
+    dataUrl: null,
+    findings: [], // {structure, observation}
+    analyzing: false,
+    hasDraft: false,
+    aiOK: false
+  };
+
+  // ---------- helpers ----------
+  function $(id){ return document.getElementById(id); }
+  function escHtml(s){
+    return String(s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function todayISO(){
+    var d = new Date();
+    var m = String(d.getMonth()+1).padStart(2,'0');
+    var day = String(d.getDate()).padStart(2,'0');
+    return d.getFullYear()+'-'+m+'-'+day;
+  }
+  $('studyDate').value = todayISO();
+
+  function safeLocalStorage(){
+    try{
+      var k = '__lb_test__';
+      window.localStorage.setItem(k, '1');
+      window.localStorage.removeItem(k);
+      return window.localStorage;
+    }catch(e){ return null; }
+  }
+  var ls = safeLocalStorage();
+
+  // ---------- system status badge + step tracker ----------
+  function setSysBadge(kind, text){
+    var badge = $('sysBadge');
+    badge.setAttribute('data-state', kind);
+    $('sysBadgeText').textContent = text;
+  }
+  function setStep(n){
+    [1,2,3,4].forEach(function(i){
+      var el = $('step'+i);
+      el.className = i < n ? 'done' : (i === n ? 'active' : '');
+    });
+  }
+  setStep(1);
+
+  // ---------- findings rows ----------
+  function renderFindings(){
+    var list = $('findingsList');
+    list.innerHTML = '';
+    if(state.findings.length === 0){
+      state.findings.push({structure:'', observation:''});
+    }
+    state.findings.forEach(function(f, i){
+      var row = document.createElement('div');
+      row.className = 'finding-row';
+      row.innerHTML =
+        '<input type="text" data-idx="'+i+'" data-field="structure" placeholder="Structure" value="'+escHtml(f.structure)+'">' +
+        '<textarea data-idx="'+i+'" data-field="observation" placeholder="Observation&hellip;">'+escHtml(f.observation)+'</textarea>' +
+        '<button type="button" class="row-remove" data-idx="'+i+'" aria-label="Remove finding">&times;</button>';
+      list.appendChild(row);
+    });
+    list.querySelectorAll('input,textarea').forEach(function(el){
+      el.addEventListener('input', function(){
+        var idx = Number(el.getAttribute('data-idx'));
+        var field = el.getAttribute('data-field');
+        state.findings[idx][field] = el.value;
+      });
+    });
+    list.querySelectorAll('.row-remove').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var idx = Number(btn.getAttribute('data-idx'));
+        state.findings.splice(idx,1);
+        renderFindings();
+      });
+    });
+  }
+  renderFindings();
+
+  $('addFinding').addEventListener('click', function(){
+    state.findings.push({structure:'', observation:''});
+    renderFindings();
+  });
+
+  // ---------- file intake ----------
+  var dropzone = $('dropzone'), fileInput = $('fileInput'), previewImg = $('previewImg'), dropHint = $('dropHint');
+
+  function handleFile(file){
+    if(!file || file.type.indexOf('image/') !== 0) return;
+    state.file = file;
+    if(state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = URL.createObjectURL(file);
+    previewImg.src = state.previewUrl;
+    previewImg.hidden = false;
+    dropHint.hidden = true;
+    setStatus('');
+    setStep(2);
+    updateAiStatus();
+
+    var reader = new FileReader();
+    reader.onload = function(e){ state.dataUrl = e.target.result; };
+    reader.readAsDataURL(file);
+  }
+
+  fileInput.addEventListener('change', function(e){
+    if(e.target.files && e.target.files[0]) handleFile(e.target.files[0]);
+  });
+  ['dragenter','dragover'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(function(evt){
+    dropzone.addEventListener(evt, function(e){ e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', function(e){
+    var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if(f) handleFile(f);
+  });
+
+  // ---------- status ----------
+  function setStatus(msg, kind){
+    var el = $('statusLine');
+    el.className = 'status-line' + (kind === 'err' ? ' err' : '');
+    if(msg === '__thinking__'){
+      el.innerHTML = '<span class="spinner"></span> Reading image&hellip; this can take 15&ndash;60s.';
+    } else {
+      el.textContent = msg || '';
+    }
+  }
+  function setReportStatus(msg, kind){
+    var el = $('reportStatus');
+    el.className = 'report-status' + (kind ? ' '+kind : '');
+    el.textContent = msg || '';
+  }
+
+  // ---------- OpenAI key handling ----------
+  var apiKeyInput = $('apiKeyInput'), toggleKeyBtn = $('toggleKeyBtn'), rememberKey = $('rememberKey'),
+      clearKeyBtn = $('clearKeyBtn'), modelInput = $('modelInput');
+
+  (function loadSavedKey(){
+    if(!ls) { rememberKey.checked = false; rememberKey.disabled = true; return; }
+    var savedKey = ls.getItem(STORAGE_KEY);
+    var savedModel = ls.getItem(STORAGE_MODEL);
+    if(savedKey){ apiKeyInput.value = savedKey; rememberKey.checked = true; }
+    if(savedModel){ modelInput.value = savedModel; }
+  })();
+
+  function getApiKey(){ return (apiKeyInput.value || '').trim(); }
+  function getModel(){ return (modelInput.value || '').trim() || 'gpt-4o'; }
+
+  function persistKeyIfWanted(){
+    if(!ls) return;
+    if(rememberKey.checked && getApiKey()){
+      try{ ls.setItem(STORAGE_KEY, getApiKey()); }catch(e){}
+    } else if(!rememberKey.checked){
+      try{ ls.removeItem(STORAGE_KEY); }catch(e){}
+    }
+    try{ ls.setItem(STORAGE_MODEL, getModel()); }catch(e){}
+  }
+
+  toggleKeyBtn.addEventListener('click', function(){
+    var showing = apiKeyInput.type === 'text';
+    apiKeyInput.type = showing ? 'password' : 'text';
+    toggleKeyBtn.textContent = showing ? 'Show' : 'Hide';
+  });
+  clearKeyBtn.addEventListener('click', function(){
+    apiKeyInput.value = '';
+    rememberKey.checked = false;
+    if(ls){ try{ ls.removeItem(STORAGE_KEY); }catch(e){} }
+    updateAiStatus();
+  });
+  apiKeyInput.addEventListener('input', function(){ persistKeyIfWanted(); updateAiStatus(); });
+  modelInput.addEventListener('input', persistKeyIfWanted);
+  rememberKey.addEventListener('change', persistKeyIfWanted);
+
+  function setAnalyzeCaption(text, ready){
+    var el = $('analyzeCaption');
+    el.textContent = text;
+    el.className = 'btn-caption' + (ready ? ' ready' : '');
+  }
+
+  function updateAiStatus(){
+    var key = getApiKey();
+    var looksValid = /^sk-[A-Za-z0-9_-]{10,}$/.test(key);
+    state.aiOK = looksValid;
+
+    if(!key){
+      setSysBadge('off', 'No API key');
+      setAnalyzeCaption('Enter your OpenAI API key above to enable AI drafting.');
+      $('capsWarn').hidden = false;
+      $('capsWarn').textContent = 'No OpenAI API key set — you can still fill out and export a report manually below.';
+    } else if(!looksValid){
+      setSysBadge('off', 'Check key format');
+      setAnalyzeCaption('That doesn’t look like a valid OpenAI key (should start with "sk-").');
+      $('capsWarn').hidden = false;
+      $('capsWarn').textContent = 'Double check the API key — OpenAI keys start with "sk-".';
+    } else {
+      setSysBadge('ready', 'AI ready');
+      $('capsWarn').hidden = true;
+      setAnalyzeCaption(state.file ? 'Ready — click to analyze' : 'Upload a CT image above first', !!state.file);
+    }
+    $('analyzeBtn').disabled = !(state.aiOK && state.file && !state.analyzing);
+  }
+  updateAiStatus();
+
+  // ---------- analyze ----------
+  var SECTION_NAMES = ['EXAM','CLINICAL HISTORY','TECHNIQUE','COMPARISON','FINDINGS','IMPRESSION','LIMITATIONS'];
+
+  var ERROR_COPY = {
+    invalid_api_key: "That API key was rejected by OpenAI — check it's correct and hasn't been revoked.",
+    incorrect_api_key: "That API key was rejected by OpenAI — check it's correct and hasn't been revoked.",
+    http_401: "That API key was rejected by OpenAI — check it's correct and hasn't been revoked.",
+    insufficient_quota: "This OpenAI account has no remaining quota/credits for this key.",
+    http_429: "Rate-limited or out of quota with OpenAI — wait a moment and try again, or check your account's usage limits.",
+    rate_limit_exceeded: "Rate-limited by OpenAI — wait a moment and try again.",
+    model_not_found: "That model isn't available for this API key — try gpt-4o or gpt-4o-mini.",
+    http_404: "That model isn't available for this API key — try gpt-4o or gpt-4o-mini.",
+    context_length_exceeded: "The request was too large for this model.",
+    content_policy_violation: "OpenAI declined this image or request.",
+    network_error: "Couldn't reach OpenAI — check your internet connection and try again.",
+    empty_completion: "No draft came back — try again or use a clearer image.",
+    cancelled: ""
+  };
+
+  function buildPrompt(indication){
+    return [
+      "You are helping a radiologist test an AI-assisted drafting tool. You are shown one CT image ",
+      "(a single static image or slice, not a full DICOM series). Draft a preliminary, PRACTICE-TESTING-ONLY ",
+      "structured report of what is visible in this image. This is NOT a clinical diagnosis and will always ",
+      "be reviewed and edited by a licensed radiologist before any use.\n\n",
+      indication ? 'Clinical indication provided by the user: "' + indication + '"\n\n' : "No clinical indication was provided.\n\n",
+      "Look carefully at the image and describe only what you can actually see. Where anatomy is not visible, ",
+      "not evaluable, or image quality/resolution limits assessment, say so plainly rather than guessing. Do not ",
+      "assign a specific ICD-10 or diagnostic code. Hedge appropriately — use radiological uncertainty language ",
+      '("suspicious for", "cannot exclude", "nonspecific") rather than definitive diagnostic claims, since this is ',
+      "drawn from a single flattened image, not a diagnostic-quality DICOM series.\n\n",
+      "Reply in PLAIN TEXT using EXACTLY this section structure — each header alone on its own line, no markdown, ",
+      "no asterisks, no bullet characters:\n\n",
+      "EXAM:\n[short study description, e.g. \"CT HEAD WITHOUT CONTRAST\" or \"CT ABDOMEN, AXIAL IMAGE\"]\n\n",
+      "CLINICAL HISTORY:\n[the indication above, or \"Not provided.\" if none]\n\n",
+      "TECHNIQUE:\n[one to two sentences; explicitly note this is a single static image, not a full multiplanar ",
+      "acquisition, and full technique parameters are not available from this input]\n\n",
+      "COMPARISON:\n[\"None available.\" unless told otherwise]\n\n",
+      "FINDINGS:\n[One short entry per anatomic structure you can meaningfully comment on (typically 4-10). ",
+      "Format EACH as the structure name alone on its own line ending with a colon, then its observation on the ",
+      "following line(s), with a blank line between structures — for example:\n",
+      "Liver:\nNormal size and contour. No focal hepatic lesion.\n\n",
+      "Gallbladder:\nUnremarkable.\n\n",
+      "Where a structure is not visible or not evaluable on this image, say so in its observation rather than ",
+      "omitting it.]\n\n",
+      "IMPRESSION:\n[a numbered list, one finding per line, most significant first]\n\n",
+      "LIMITATIONS:\n[one to two sentences on what this single-image AI draft cannot assess — no prior comparison, ",
+      "no full series, no clinical correlation, not a validated diagnostic device, etc.]"
+    ].join('');
+  }
+
+  // Split the raw reply into named sections keyed by header line (EXAM, FINDINGS, ...).
+  function parseSections(text){
+    var lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+    var sections = {};
+    var current = null, buf = [];
+    function flush(){
+      if(current){ sections[current] = buf.join('\n').trim(); }
+      buf = [];
+    }
+    lines.forEach(function(raw){
+      var t = raw.replace(/\*\*/g, '').trim().replace(/^#+\s*/, '');
+      var m = t.match(/^([A-Za-z][A-Za-z ]{2,24}):?\s*$/);
+      var name = m ? m[1].toUpperCase().trim() : null;
+      if(name && SECTION_NAMES.indexOf(name) !== -1){
+        flush();
+        current = name;
+      } else if(current){
+        buf.push(raw.replace(/\*\*/g, ''));
+      }
+    });
+    flush();
+    return sections;
+  }
+
+  // Within a FINDINGS block, split "Structure:\nobservation" groups into rows.
+  // Falls back to one catch-all row if the model wrote plain prose instead.
+  function parseFindings(text){
+    var lines = String(text || '').split('\n');
+    var rows = [];
+    var label = null, buf = [];
+    function flush(){
+      var obs = buf.join(' ').replace(/\s+/g, ' ').trim();
+      if(obs) rows.push({ structure: label || 'Findings', observation: obs });
+      buf = [];
+    }
+    lines.forEach(function(raw){
+      var t = raw.trim();
+      var m = t.match(/^([A-Za-z][A-Za-z /()'-]{1,35}):\s*$/);
+      if(m){
+        flush();
+        label = m[1];
+      } else if(t){
+        buf.push(t);
+      }
+    });
+    flush();
+    return rows;
+  }
+
+  // Calls OpenAI's chat completions endpoint directly from the browser with the
+  // viewer's own API key, streaming the reply so it can be shown live.
+  function requestOpenAI(prompt, apiKey, model, dataUrl, onText){
+    var body = {
+      model: model,
+      messages: [
+        { role: 'user', content: [
+          { type: 'text', text: prompt },
+          { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } }
+        ]}
+      ],
+      max_tokens: 1600,
+      stream: true
+    };
+
+    return fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + apiKey
+      },
+      body: JSON.stringify(body)
+    }).catch(function(){
+      var err = new Error('Network error reaching OpenAI');
+      err.code = 'network_error';
+      throw err;
+    }).then(function(resp){
+      if(!resp.ok){
+        return resp.json().catch(function(){ return null; }).then(function(errJson){
+          var msg = (errJson && errJson.error && errJson.error.message) || ('HTTP ' + resp.status);
+          var code = (errJson && errJson.error && (errJson.error.code || errJson.error.type)) || ('http_' + resp.status);
+          var err = new Error(msg);
+          err.code = code;
+          throw err;
+        });
+      }
+
+      var reader = resp.body.getReader();
+      var decoder = new TextDecoder('utf-8');
+      var full = '';
+      var finishReason = null;
+      var buf = '';
+
+      function pump(){
+        return reader.read().then(function(res){
+          if(res.done){
+            return { text: full, truncated: finishReason === 'length' };
+          }
+          buf += decoder.decode(res.value, { stream: true });
+          var parts = buf.split('\n\n');
+          buf = parts.pop();
+          parts.forEach(function(chunk){
+            chunk.split('\n').forEach(function(line){
+              line = line.trim();
+              if(line.slice(0,6) !== 'data: ') return;
+              var payload = line.slice(6).trim();
+              if(payload === '[DONE]') return;
+              try{
+                var json = JSON.parse(payload);
+                var choice = json.choices && json.choices[0];
+                if(choice){
+                  if(choice.delta && choice.delta.content){
+                    full += choice.delta.content;
+                    if(onText) onText({ text: full });
+                  }
+                  if(choice.finish_reason) finishReason = choice.finish_reason;
+                }
+              }catch(e){ /* ignore malformed SSE fragment */ }
+            });
+          });
+          return pump();
+        });
+      }
+      return pump();
+    });
+  }
+
+  function runAnalysis(){
+    var apiKey = getApiKey();
+    if(!state.aiOK || !apiKey || !state.file || !state.dataUrl || state.analyzing) return;
+    state.analyzing = true;
+    $('analyzeBtn').disabled = true;
+    $('regenBtn').disabled = true;
+    setAnalyzeCaption('');
+    setStatus('__thinking__');
+    setSysBadge('busy', 'Reading image…');
+
+    var transcriptEl = $('aiTranscript');
+    transcriptEl.textContent = '';
+    transcriptEl.classList.remove('has-content');
+    transcriptEl.classList.add('live');
+
+    var prompt = buildPrompt(($('indication').value || '').trim());
+    var model = getModel();
+
+    requestOpenAI(prompt, apiKey, model, state.dataUrl, function(update){
+      transcriptEl.textContent = update.text;
+      transcriptEl.classList.add('has-content');
+      transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    }).then(function(result){
+      if(!result.text || !result.text.trim()){
+        var err = new Error('Empty response'); err.code = 'empty_completion'; throw err;
+      }
+      var sections = parseSections(result.text);
+      var parsedAnything = applyDraft(sections, result.text);
+      if(!parsedAnything){
+        setStatus('Got a reply but couldn’t find the expected sections — raw text is in AI output below; copy what you need by hand.', 'err');
+      } else if(result.truncated){
+        setStatus('Draft cut off before it finished — review carefully, or try Regenerate.', 'err');
+      } else {
+        setStatus('Draft ready — review every line before trusting it.');
+      }
+      state.hasDraft = true;
+      $('regenBtn').hidden = false;
+      setStep(3);
+      transcriptEl.classList.remove('live');
+    }).catch(function(e){
+      var code = (e && e.code) || 'upstream_error';
+      var copy = ERROR_COPY[code] !== undefined ? ERROR_COPY[code] : ('Something went wrong reaching OpenAI (' + code + ') — try again.');
+      setStatus(copy, 'err');
+      transcriptEl.classList.remove('live');
+      if(!transcriptEl.classList.contains('has-content')){
+        transcriptEl.textContent = 'No output received (' + code + (e && e.message ? ': ' + e.message : '') + ').';
+      }
+    }).finally(function(){
+      state.analyzing = false;
+      updateAiStatus();
+      $('regenBtn').disabled = false;
+      if(state.hasDraft){ setAnalyzeCaption('Draft filled in below — edit freely', true); }
+    });
+  }
+
+  var DEFAULT_TECHNIQUE = 'Single static CT image submitted for AI-assisted draft review; full multiplanar/multiphase acquisition technique is not available from this input.';
+  var DEFAULT_LIMITATIONS = 'This draft is based on one flattened image with no prior comparison and no access to the full DICOM series; it cannot assess anything outside this single view and is not a validated diagnostic device.';
+
+  // Populate the report fields from parsed sections. Returns true if it found
+  // at least one usable section, so the caller can tell a real parse from a miss.
+  function applyDraft(sections, rawText){
+    var found = false;
+
+    if(sections.EXAM){
+      $('studyTitle').textContent = 'CT — ' + sections.EXAM;
+      found = true;
+    }
+
+    var indicationVal = ($('indication').value || '').trim();
+    if(sections['CLINICAL HISTORY'] && !/^not provided\.?$/i.test(sections['CLINICAL HISTORY'])){
+      $('clinicalInfo').value = sections['CLINICAL HISTORY'];
+      found = true;
+    } else if(indicationVal && !$('clinicalInfo').value){
+      $('clinicalInfo').value = indicationVal;
+    }
+
+    if(sections.TECHNIQUE){
+      var tech = sections.TECHNIQUE;
+      if(!/single (static )?image/i.test(tech)) tech += ' ' + DEFAULT_TECHNIQUE;
+      $('technique').value = tech;
+      found = true;
+    } else if(!$('technique').value){
+      $('technique').value = DEFAULT_TECHNIQUE;
+    }
+
+    if(sections.COMPARISON){
+      $('comparison').value = sections.COMPARISON;
+      found = true;
+    }
+
+    if(sections.FINDINGS){
+      var rows = parseFindings(sections.FINDINGS);
+      if(rows.length){
+        state.findings = rows;
+        renderFindings();
+        found = true;
+      }
+    }
+
+    if(sections.IMPRESSION){
+      // Keep the model's own numbering if it already numbered; otherwise number it ourselves.
+      var impLines = sections.IMPRESSION.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+      if(impLines.length && !/^\d+[.)]/.test(impLines[0])){
+        impLines = impLines.map(function(l,i){ return (i+1)+'. '+l; });
+      }
+      $('impression').value = impLines.join('\n');
+      found = true;
+    }
+
+    $('limitations').value = sections.LIMITATIONS || DEFAULT_LIMITATIONS;
+
+    // Nothing matched any known header at all — the model ignored the format.
+    // Don't leave the report blank: drop the whole reply into Findings as one row.
+    if(!found && rawText && rawText.trim()){
+      state.findings = [{ structure: 'AI reply (unstructured)', observation: rawText.trim() }];
+      renderFindings();
+    }
+
+    return found;
+  }
+
+  $('analyzeBtn').addEventListener('click', function(){ runAnalysis(); });
+  $('regenBtn').addEventListener('click', function(){ runAnalysis(); });
+
+  // ---------- clear ----------
+  $('clearBtn').addEventListener('click', function(){
+    if(!confirm('Clear the uploaded image and everything drafted so far?')) return;
+    state.file = null;
+    if(state.previewUrl) URL.revokeObjectURL(state.previewUrl);
+    state.previewUrl = null; state.dataUrl = null;
+    previewImg.hidden = true; previewImg.src = '';
+    dropHint.hidden = false;
+    fileInput.value = '';
+    $('regenBtn').hidden = true;
+    $('indication').value = '';
+    $('studyTitle').textContent = 'CT — study pending';
+    $('clinicalInfo').value = '';
+    $('technique').value = '';
+    $('comparison').value = '';
+    $('impression').value = '';
+    $('limitations').value = '';
+    $('icdRef').value = '';
+    $('patientRef').value = '';
+    state.findings = [];
+    renderFindings();
+    setStatus('');
+    setReportStatus('');
+    state.hasDraft = false;
+    setStep(1);
+    updateAiStatus();
+    var transcriptEl = $('aiTranscript');
+    transcriptEl.textContent = "No AI output yet — upload an image above and click Analyze. You'll see the AI's answer appear here as it's written, before it gets split into the fields on the right.";
+    transcriptEl.classList.remove('has-content','live');
+  });
+
+  // ---------- PDF ----------
+  function collectReport(){
+    return {
+      title: $('studyTitle').textContent,
+      facility: $('facility').value,
+      date: $('studyDate').value,
+      patientRef: $('patientRef').value,
+      radiologist: $('radiologist').value || $('radiologist2').value,
+      clinicalInfo: $('clinicalInfo').value,
+      technique: $('technique').value,
+      comparison: $('comparison').value,
+      findings: state.findings.filter(function(f){ return f.structure || f.observation; }),
+      impression: $('impression').value,
+      limitations: $('limitations').value,
+      icdRef: $('icdRef').value
+    };
+  }
+
+  function buildPdf(report){
+    var jsPDF = window.jspdf.jsPDF;
+    var doc = new jsPDF({ unit:'pt', format:'letter' });
+    var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
+    var margin = 48;
+    var maxW = pageW - margin*2;
+    var y = margin;
+
+    function ensureSpace(h){
+      if(y + h > pageH - 56){ doc.addPage(); y = margin; }
+    }
+    function heading(text, size){
+      ensureSpace(20);
+      doc.setFont('helvetica','bold'); doc.setFontSize(size || 11);
+      doc.setTextColor(20,30,35);
+      doc.text(text.toUpperCase(), margin, y);
+      y += 6; doc.setDrawColor(200,200,195); doc.line(margin, y, pageW-margin, y);
+      y += 16;
+    }
+    function body(text, size){
+      doc.setFont('helvetica','normal'); doc.setFontSize(size || 10);
+      doc.setTextColor(30,34,38);
+      var lines = doc.splitTextToSize(text || '—', maxW);
+      lines.forEach(function(line){
+        ensureSpace(14);
+        doc.text(line, margin, y);
+        y += 13;
+      });
+      y += 6;
+    }
+
+    // Letterhead
+    doc.setFont('times','bold'); doc.setFontSize(16);
+    doc.setTextColor(15,20,24);
+    doc.text(report.facility || 'POC Test Site', margin, y); y += 20;
+    doc.setFont('helvetica','normal'); doc.setFontSize(9);
+    doc.setTextColor(90,96,100);
+    doc.text('Proof-of-concept AI-assisted draft — not a real clinical report', margin, y); y += 18;
+    doc.setDrawColor(15,20,24); doc.setLineWidth(1.2); doc.line(margin, y, pageW-margin, y); y += 18;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(12);
+    doc.setTextColor(20,30,35);
+    doc.text(report.title || 'CT Study', margin, y); y += 18;
+
+    doc.setFont('courier','normal'); doc.setFontSize(9);
+    doc.setTextColor(60,66,70);
+    var metaLine = 'Date: ' + (report.date||'—') + '    Ref: ' + (report.patientRef||'—') + '    Radiologist: ' + (report.radiologist||'— (pending)');
+    doc.text(metaLine, margin, y); y += 20;
+
+    // key image
+    if(state.dataUrl){
+      try{
+        var props = doc.getImageProperties(state.dataUrl);
+        var imgW = 200, imgH = (props.height/props.width)*imgW;
+        ensureSpace(imgH + 10);
+        doc.addImage(state.dataUrl, props.fileType, margin, y, imgW, imgH);
+        doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(120,120,120);
+        doc.text('Submitted image', margin, y+imgH+11);
+        y += imgH + 24;
+      }catch(e){ /* skip image if it can't be embedded */ }
+    }
+
+    heading('Clinical Information');
+    body(report.clinicalInfo);
+
+    heading('Technique');
+    body(report.technique);
+
+    heading('Comparison');
+    body(report.comparison);
+
+    heading('Findings');
+    if(report.findings.length){
+      report.findings.forEach(function(f){
+        doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(20,30,35);
+        ensureSpace(13);
+        doc.text((f.structure || 'Finding') + ':', margin, y); y += 13;
+        body(f.observation);
+      });
+    } else {
+      body('No findings recorded.');
+    }
+
+    heading('Impression');
+    body(report.impression);
+
+    heading('Limitations');
+    body(report.limitations);
+
+    if(report.icdRef){
+      heading('Internal QA / ICD Reference (not for billing)');
+      body(report.icdRef);
+    }
+
+    heading('AI Assistance Disclosure');
+    doc.setTextColor(120,80,0);
+    body('This draft was produced with AI assistance from a general-purpose vision model (OpenAI) reading a single static image, not a regulatory-cleared radiology device and not a full diagnostic series. It has not been reviewed or signed. Proof-of-concept only — not for clinical, diagnostic or billing use.', 9);
+
+    // footer on every page
+    var pageCount = doc.internal.getNumberOfPages();
+    for(var i=1;i<=pageCount;i++){
+      doc.setPage(i);
+      doc.setFont('helvetica','italic'); doc.setFontSize(8); doc.setTextColor(140,140,140);
+      doc.text('Lightbox Draft — AI-assisted proof of concept — not for clinical use', margin, pageH-30);
+      doc.text('Page ' + i + ' / ' + pageCount, pageW-margin-60, pageH-30);
+    }
+
+    return doc.output('blob');
+  }
+
+  // Plain browser download — no host capability needed, works in any browser.
+  function saveBlob(filename, blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+
+  $('downloadBtn').addEventListener('click', function(){
+    var report = collectReport();
+    var blob;
+    try{
+      blob = buildPdf(report);
+    }catch(e){
+      setReportStatus('Could not build the PDF: ' + (e && e.message ? e.message : e), 'err');
+      return;
+    }
+    var filename = 'lightbox-draft-' + (report.patientRef ? report.patientRef.replace(/[^a-z0-9-]+/gi,'_') : 'report') + '.pdf';
+    try{
+      saveBlob(filename, blob);
+      setReportStatus('PDF saved.', 'ok');
+      setStep(4);
+    }catch(e){
+      setReportStatus('Could not save the PDF (' + (e && e.message ? e.message : e) + ').', 'err');
+    }
+  });
+
+})();
+</script>
+</body>
+</html>
